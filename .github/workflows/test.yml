@@ -1,0 +1,32 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The oldest Python telepathy supports; newer versions are covered locally.
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Install bats and shellcheck
+        run: sudo apt-get update -q && sudo apt-get install -y -q bats shellcheck
+      - name: Unit tests
+        run: PYTHONPATH=. python -m unittest discover -s tests -v
+      - name: Installer tests (staged, no root) and shellcheck
+        run: bats tests/
