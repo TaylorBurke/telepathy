@@ -1,7 +1,8 @@
 """telepathyd: the root daemon.
 
 Two unix sockets, newline-delimited JSON, one request/response per connection.
-Caller identity always comes from SO_PEERCRED, never from the message.
+Caller identity always comes from the kernel (SO_PEERCRED, via oscompat), never
+from the message.
 
   agent socket  (0666, uid must be in allowed_uids): submit, status, result, cancel
   admin socket  (0600, uid must be root):            list, show, approve, deny
@@ -23,7 +24,6 @@ import signal
 import socket
 import socketserver
 import stat
-import struct
 import sys
 import threading
 import time
@@ -34,7 +34,7 @@ from .audit import AuditLog, FileSink
 from .broker import (Broker, BrokerError, CheckUnavailable, Expired, IntegrityFailure, Limits,
                      NonceMismatch, PolicyDenied, RateLimited, UnknownRequest)
 from .config import Config, ConfigError, require_secure_file
-from . import cgroup
+from . import cgroup, oscompat
 from .executor import ExecResult, configure_cgroups, run_command, sweep_cgroups
 from .notify import NtfyNotifier, WebhookNotifier
 from .policy import (Policy, PolicyError, configure_submit_quota, drain_skip_events, skipped_protected_prefixes,
@@ -47,7 +47,6 @@ MAX_RESULTS = 64
 RETRY_DELAY = 2.0  # first backoff before retrying a run whose path check was unavailable
 MAX_RUN_ATTEMPTS = 5  # total begin_run attempts; backoff doubles: 2, 4, 8, 16 s
 POLL_INTERVAL = 0.2  # serve_forever() poll; tests inject a smaller one
-PEERCRED = struct.Struct("3i")
 
 
 def _err(code: str, message: str, **extra) -> dict:
@@ -365,8 +364,7 @@ class _Handler(socketserver.StreamRequestHandler):
         sock = self.request
         sock.settimeout(10)
         try:
-            _pid, uid, _gid = PEERCRED.unpack(
-                sock.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, PEERCRED.size))
+            uid = oscompat.peer_uid(sock)
             line = self.rfile.readline(MAX_LINE + 1)
             if not line:
                 return
@@ -543,6 +541,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     try:
+        oscompat.check_supported()  # before anything is read or served, even in dev mode
         if not args.insecure_dev:
             if os.geteuid() != 0:
                 raise ConfigError("must run as root")
@@ -557,7 +556,7 @@ def main(argv=None) -> int:
         os.makedirs(os.path.dirname(cfg.audit_path), mode=0o700, exist_ok=True)
         sink = FileSink(cfg.audit_path)
         audit = AuditLog(sink)
-    except (ConfigError, PolicyError, OSError) as e:
+    except (ConfigError, PolicyError, OSError, oscompat.UnsupportedPlatform) as e:
         print(f"telepathyd: {e}", file=sys.stderr)
         return 2
 
