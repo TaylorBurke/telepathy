@@ -24,8 +24,8 @@ import time
 
 SUPPORTED = ("linux",)
 
-# struct ucred from SO_PEERCRED: pid, uid, gid as C ints.
-_PEERCRED = struct.Struct("3i")
+# struct ucred from SO_PEERCRED: pid_t (signed), uid_t and gid_t (unsigned 32-bit).
+_PEERCRED = struct.Struct("iII")
 
 
 class UnsupportedPlatform(RuntimeError):

@@ -843,10 +843,13 @@ class MonotonicClock(unittest.TestCase):
             g.assert_called_once_with(7)
 
     def test_select_boottime_falls_back_to_monotonic_when_missing(self):
-        with mock.patch.object(time, "CLOCK_BOOTTIME", 7, create=True):
-            del time.CLOCK_BOOTTIME  # hide it, as on macOS/Windows
+        saved = time.__dict__.pop("CLOCK_BOOTTIME", None)  # hide it, as on macOS/Windows
+        try:
             self.assertFalse(hasattr(time, "CLOCK_BOOTTIME"))
             self.assertIs(select_boottime(), time.monotonic)
+        finally:
+            if saved is not None:
+                time.CLOCK_BOOTTIME = saved
 
     def test_default_clock_is_boottime(self):
         self.assertIs(Broker(Policy.empty()).clock, boottime)

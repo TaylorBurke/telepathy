@@ -1,3 +1,4 @@
+import contextlib
 import os
 import socket
 import sys
@@ -6,6 +7,21 @@ import unittest
 from unittest import mock
 
 from telepathy import daemon, oscompat
+
+
+@contextlib.contextmanager
+def hidden(mod, name):
+    """Remove mod.name for the block, as on a platform without it; works whether
+    or not this host has it (mock's create=True + delattr fails on exit if not)."""
+    missing = object()
+    saved = getattr(mod, name, missing)
+    if saved is not missing:
+        delattr(mod, name)
+    try:
+        yield
+    finally:
+        if saved is not missing:
+            setattr(mod, name, saved)
 
 
 class Support(unittest.TestCase):
@@ -23,8 +39,7 @@ class Support(unittest.TestCase):
 
     def test_each_missing_feature_is_refused_and_named(self):
         for mod, name in ((time, "CLOCK_BOOTTIME"), (socket, "SO_PEERCRED"), (os, "getxattr")):
-            with mock.patch.object(mod, name, None, create=True):
-                delattr(mod, name)  # hide it, as on a platform without it
+            with hidden(mod, name):
                 with self.assertRaises(oscompat.UnsupportedPlatform) as cm:
                     oscompat.check_supported("linux")
                 self.assertIn(name, str(cm.exception))
@@ -38,6 +53,13 @@ class Support(unittest.TestCase):
 
 
 class PeerUid(unittest.TestCase):
+    def test_large_uids_decode_unsigned(self):
+        raw = oscompat._PEERCRED.pack(1234, 0xFFFFFFFE, 0xFFFFFFFD)
+        self.assertEqual(oscompat._PEERCRED.unpack(raw), (1234, 4294967294, 4294967293))
+        sock = mock.Mock()
+        sock.getsockopt.return_value = raw
+        self.assertEqual(oscompat.peer_uid(sock), 4294967294)
+
     def test_reports_our_own_uid_over_a_socketpair(self):
         if not hasattr(socket, "SO_PEERCRED"):
             self.skipTest("no SO_PEERCRED")

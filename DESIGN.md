@@ -360,8 +360,9 @@ webhook push.
 Next:
 
 1. **macOS (v0.2).** Each platform-specific piece gets a branch in
-   `telepathy/oscompat.py` and its call site. Same trust model: `tailscale serve` to a root-only unix
-   socket appears to be supported there. Needs macOS versions of peer
+   `telepathy/oscompat.py` and its call site. Same trust model: `tailscale
+   serve` to a root-only unix socket appears to be supported there (Tailscale's
+   CLI help lists unix targets for Linux, macOS and BSD). Needs macOS versions of peer
    credentials, the ACL checks, a sleep-counting clock, process tracking without
    `/proc` or cgroups, a launchd job instead of the systemd unit, newsyslog
    instead of logrotate, and a bundled Python.
