@@ -66,8 +66,9 @@ python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1
 
 PHONE_SETUP=0
 if [ -n "$APPROVER_LOGIN$APPROVER_IP$PUBLIC_URL" ]; then
-  [ -n "$APPROVER_LOGIN" ] && [ -n "$APPROVER_IP" ] && [ -n "$PUBLIC_URL" ] \
-    || die "--approver-login, --approver-ip and --public-url must be given together"
+  if [ -z "$APPROVER_LOGIN" ] || [ -z "$APPROVER_IP" ] || [ -z "$PUBLIC_URL" ]; then
+    die "--approver-login, --approver-ip and --public-url must be given together"
+  fi
   [[ "$APPROVER_LOGIN" =~ ^[^[:space:]\"\\]+$ ]] || die "--approver-login must not contain spaces, quotes or backslashes"
   python3 -c 'import ipaddress, sys; ipaddress.ip_address(sys.argv[1])' "$APPROVER_IP" 2>/dev/null \
     || die "--approver-ip must be a single IP address (see: tailscale status)"
