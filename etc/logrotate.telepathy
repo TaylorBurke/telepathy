@@ -1,0 +1,32 @@
+# telepathy audit log rotation. Installed by install.sh to
+# /etc/logrotate.d/telepathy and removed by uninstall.sh.
+#
+# This is the only record of what ran as root, so keep a year: weekly, 52 kept.
+# No copytruncate (it can lose records written between the copy and the
+# truncate): the daemon reopens the file on SIGHUP instead.
+#
+# `create 0600 root root` assumes the daemon runs as root (the installed unit
+# does). If you run it as another user, change the owner here.
+#
+# The hook (installed with the program files) makes rotation safe: prerotate
+# aborts it unless the daemon is active and has written /run/telepathy/hup-ok
+# (meaning it handles SIGHUP and will reopen the file; an older daemon would be
+# killed by the signal), postrotate sends SIGHUP to the main process only
+# (KillMode=control-group would otherwise HUP approved commands too). Both log
+# to the journal as telepathy-logrotate. The marker lives next to
+# admin_socket_path; if you move that socket, set MARKER in the hook call.
+/var/log/telepathy/audit.jsonl {
+    weekly
+    rotate 52
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0600 root root
+    prerotate
+        /usr/local/lib/telepathy/bin/telepathy-logrotate-hook prerotate
+    endscript
+    postrotate
+        /usr/local/lib/telepathy/bin/telepathy-logrotate-hook postrotate
+    endscript
+}

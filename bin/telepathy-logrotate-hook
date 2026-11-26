@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Called by /etc/logrotate.d/telepathy. Rotating the audit log is only safe if
+# the daemon will reopen it, so:
+#   prerotate   exit 1 (logrotate then skips this rotation) unless the unit is
+#               active AND the daemon has written its hup-ok marker
+#   postrotate  send SIGHUP to the daemon's main process only (never to the
+#               approved commands sharing its cgroup); always exit 0
+# Everything is reported to the journal (logger -t telepathy-logrotate).
+# Overridable for tests: SYSTEMCTL, MARKER, UNIT.
+set -u
+SYSTEMCTL="${SYSTEMCTL:-/usr/bin/systemctl}"
+MARKER="${MARKER:-/run/telepathy/hup-ok}"
+UNIT="${UNIT:-telepathyd.service}"
+
+log() { logger -t telepathy-logrotate -- "$*" 2>/dev/null || echo "telepathy-logrotate: $*" >&2; }
+ready() { "$SYSTEMCTL" is-active --quiet "$UNIT" && [ -e "$MARKER" ]; }
+
+case "${1:-}" in
+  prerotate)
+    if ready; then exit 0; fi
+    log "not rotating the audit log: $UNIT is not active or has not written $MARKER (cannot be told to reopen)"
+    exit 1 ;;
+  postrotate)
+    if ready; then
+      if out=$("$SYSTEMCTL" kill --kill-whom=main -s HUP "$UNIT" 2>&1); then
+        log "sent SIGHUP to $UNIT; see audit_reopened in the new audit log"
+      else
+        log "SIGHUP to $UNIT failed: $out"
+      fi
+    else
+      log "rotated the audit log but $UNIT is not ready to reopen it; restart it to switch files"
+    fi
+    exit 0 ;;
+  *) echo "usage: telepathy-logrotate-hook prerotate|postrotate" >&2; exit 2 ;;
+esac

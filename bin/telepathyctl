@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""telepathyctl: approve or deny pending requests from a local terminal (root)."""
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir))
+
+from telepathy.client import ctl_main  # noqa: E402
+
+sys.exit(ctl_main())

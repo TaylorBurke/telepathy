@@ -1,0 +1,38 @@
+# telepathy policy. Order of precedence: deny > auto > ask.
+#
+# Built-in denials always apply and cannot be removed here: shells and
+# interpreters (sh, bash, python, perl, ...), wrappers (sudo, su, env, xargs,
+# timeout, ...), anything touching /etc/sudoers*, pam, polkit or telepathy
+# itself, and any argument that mentions "telepathy".
+#
+# A command that matches no [[auto]] rule is sent to your phone (or approved
+# locally with: sudo telepathyctl approve <id>). The list below starts empty on
+# purpose; add one rule at a time, and only for commands you would run without
+# looking. Changes take effect after: sudo systemctl restart telepathyd
+#
+# Even a "boring" rule is powerful. Installing a package, for example, runs that
+# package's install scripts as root.
+
+# Named patterns for use in rules as "@name" (one argument) or "@name..." (one
+# or more trailing arguments). A pattern must never match option-looking values
+# such as "-x" or "--x"; the daemon refuses to start if it does.
+#
+# [patterns]
+# pkg = '[a-z0-9@_+][a-z0-9@._+-]*'
+#
+# [[auto]]
+# name = "pacman-install"
+# argv = ["/usr/bin/pacman", "-S", "--needed", "--noconfirm", "@pkg..."]
+#
+# The same on Debian/Ubuntu and Fedora:
+# argv = ["/usr/bin/apt-get", "install", "-y", "@pkg..."]
+# argv = ["/usr/bin/dnf", "install", "-y", "@pkg..."]
+#
+# [[auto]]
+# name = "restart-nginx"
+# argv = ["/usr/bin/systemctl", "restart", "nginx.service"]
+
+# Extra executables to always refuse (adds to the built-ins, never removes).
+#
+# [deny]
+# executables = ["dd", "mkfs.ext4"]

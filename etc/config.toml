@@ -1,0 +1,31 @@
+# telepathy daemon config. Created once by install.sh; your edits are kept on
+# reinstall. Changes take effect after: sudo systemctl restart telepathyd
+
+# Only these local uids may ask for root. install.sh sets this to the user who
+# ran it with sudo. (Leaving the @UID@ placeholder makes the daemon refuse to start.)
+allowed_uids = [@UID@]
+
+# Phone approval page. Set BOTH of these, or neither (neither = no web socket at
+# all). The page is served on a root-only socket, /run/telepathy/web.sock, which
+# is meant to be exposed to your tailnet with `tailscale serve` and nothing else.
+#
+#   approver_logins: Tailscale logins (as shown in the Tailscale admin console).
+#   approver_ips:    the tailnet IP(s) of your phone (see `tailscale status`).
+#                    A request must match a login AND come from one of these.
+#                    Never put this machine's own tailnet IP here: local programs
+#                    (including the agent) can connect from it.
+# approver_logins = ["you@example.com"]
+# approver_ips = ["100.x.y.z"]
+
+# Generic JSON webhook for push services other than ntfy (see README). The
+# file holds the full https URL and must be root-owned, mode 0600. Needs
+# public_url (install.sh --public-url sets it; define it only once).
+# webhook_url_file = "/etc/telepathy/webhook-url"
+
+# Everything below is optional. Shown with the defaults.
+# web_socket_path = "/run/telepathy/web.sock"
+# ttl          = 600      # seconds a request stays valid, never extended
+# max_pending  = 5        # requests waiting for a decision at once
+# max_per_hour = 20       # submissions per hour, including refused ones
+# exec_timeout = 300      # seconds an approved command may run before it is killed
+# max_output   = 262144   # bytes of output returned to the agent

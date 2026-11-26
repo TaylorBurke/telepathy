@@ -1,0 +1,42 @@
+[Unit]
+Description=telepathy: approve an agent's root commands from your phone
+Documentation=https://github.com/TaylorBurke/telepathy
+After=local-fs.target
+
+[Service]
+Type=simple
+# -I: isolated mode, so no PYTHON* environment variables or user site-packages
+# can inject code into this root process. The script finds its own package.
+ExecStart=/usr/bin/python3 -I /usr/local/lib/telepathy/bin/telepathyd --config /etc/telepathy/config.toml
+# SIGHUP reopens the audit log (logrotate sends it); main process only, never the
+# approved commands (in cmd-* child cgroups of this unit, or in it on the
+# fallback path). (Needs a daemon new enough to handle
+# SIGHUP; the log rotation rule checks for that before sending it.)
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=15
+# Stopping the service also stops any approved command still running.
+KillMode=control-group
+# Per-command cgroups: telepathyd creates cmd-* children of its own cgroup
+# and kills a timed-out command with cgroup.kill. The daemon enables no controllers.
+Delegate=yes
+
+# /run/telepathy (sockets) and /var/log/telepathy (audit log) are created and
+# owned by systemd. The daemon itself sets the exact mode of each socket and file.
+RuntimeDirectory=telepathy
+RuntimeDirectoryMode=0755
+LogsDirectory=telepathy
+LogsDirectoryMode=0700
+
+NoNewPrivileges=yes
+
+# Deliberately NOT sandboxed any further. Every approved command runs as a child
+# of this service and inherits its sandbox, so ProtectSystem, ProtectHome,
+# PrivateTmp, capability or address-family limits would break the very commands
+# you approve (package installs, service restarts, anything touching /home or
+# /tmp). The protection here comes from the approval step, the policy, and the
+# root-owned program files, not from confining what an approved command can do.
+
+[Install]
+WantedBy=multi-user.target
