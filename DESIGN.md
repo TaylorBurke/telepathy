@@ -294,6 +294,11 @@ telepathy.
   and the root-owned files, not confinement of approved commands. If a class of
   command is ever routine enough to confine, run it from a separate, sandboxed
   unit rather than weakening this one.
+- **Unsupported platforms refuse to start.** `oscompat.check_supported` runs
+  first, even with `--insecure-dev`, and stops the daemon unless the platform is
+  Linux with `CLOCK_BOOTTIME`, `SO_PEERCRED` and `os.getxattr`, so a port can
+  never silently run on a weaker fallback. The library modules keep their
+  portable fallbacks so the unit tests run anywhere.
 - `install.sh` is re-run safe and never overwrites config or policy;
   `uninstall.sh` keeps them (and the audit log) unless `--purge`.
 
@@ -354,8 +359,10 @@ webhook push.
 
 Next:
 
-1. **macOS (v0.2).** Same trust model: `tailscale serve` to a root-only unix
-   socket appears to be supported there. Needs macOS versions of peer
+1. **macOS (v0.2).** Each platform-specific piece gets a branch in
+   `telepathy/oscompat.py` and its call site. Same trust model: `tailscale
+   serve` to a root-only unix socket appears to be supported there (Tailscale's
+   CLI help lists unix targets for Linux, macOS and BSD). Needs macOS versions of peer
    credentials, the ACL checks, a sleep-counting clock, process tracking without
    `/proc` or cgroups, a launchd job instead of the systemd unit, newsyslog
    instead of logrotate, and a bundled Python.
